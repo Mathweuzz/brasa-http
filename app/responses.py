@@ -3,6 +3,8 @@ from email.utils import formatdate
 # Mapa de códigos HTTP -> razão (texto curto)
 STATUS_REASONS = {
     200: "OK",
+    204: "No content",
+    302: "Found",
     304: "Not Modified",
     400: "Bad Request",
     403: "Forbidden",
@@ -37,3 +39,10 @@ def build_response(
     headers_blob = "".join(f"{k}: {v}\r\n" for k, v in headers.items())
     # Headers: ISO-8859-1 (regra do HTTP/1.1). Corpo: livre (usaremos UTF-8).
     return (status_line + headers_blob + "\r\n").encode("iso-8859-1") + body
+
+def redirect(location: str, status: int = 302, extra_headers: dict | None = None) -> bytes:
+    hdrs = {"Location": location}
+    if extra_headers:
+        hdrs.update(extra_headers)
+    #corpo vazio é ok em 302
+    return build_response(status, b"", extra_headers=hdrs, content_type="text/plain; charset=utf-8")

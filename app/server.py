@@ -93,6 +93,8 @@ def to_request(method: str, target: str, version: str, headers: dict, body: byte
             except UnicodeDecodeError:
                 # charset inválido -> mantém form vazio (handler pode reagir com 415)
                 form = {}
+        
+    cookies = parse_cookies(headers.get("cookie", ""))
 
     return Request(
         method=method.upper(),
@@ -103,6 +105,7 @@ def to_request(method: str, target: str, version: str, headers: dict, body: byte
         remote_addr=remote_addr,
         body=body,
         form=form,
+        cookies=cookies,
     )
 
 def serve_forever():
@@ -145,6 +148,16 @@ def parse_content_type(value: str) -> tuple[str, dict]:
             k, v = p.split("=", 1)
             params[k.strip().lower()] = v.strip().strip('"')
     return mt, params
+
+def parse_cookies(header_value: str) -> dict:
+    cookies = {}
+    if not header_value:
+        return cookies
+    for pair in header_value.split(";"):
+        if "=" in pair:
+            k, v = pair.split("=", 1)
+            cookies[k.strip()] = v.strip()
+    return cookies
 
 
 if __name__ == "__main__":

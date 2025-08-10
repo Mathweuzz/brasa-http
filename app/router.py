@@ -1,10 +1,11 @@
 from dataclasses import dataclass
 from typing import Callable, Dict, Tuple
 from html import escape as html_escape
-from app.responses import build_response
+from app.responses import build_response, redirect
 from pathlib import Path
 from app.staticserve import serve_static, STATIC_ROOT
 from app.templating import render_page
+from app.sessions import verify_token, build_session_cookie, build_clear_session_cookie, COOKIE_NAME
 
 @dataclass
 class Request:
@@ -17,6 +18,7 @@ class Request:
     remote_addr: str # ip do cliente (string)
     body: bytes # corpo bruto
     form: dict # dict[str, list[str]] quandp form-ur lencoded; caso contrario {}
+    cookies: dict
 
 RouteKey = Tuple[str, str] # (METHOD, PATH)
 _routes: Dict[RouteKey, Callable[[Request], bytes]] = {}
@@ -70,6 +72,10 @@ def init_routes() -> None:
     add_route("GET", "/eco", eco_get)
     add_route("POST", "/eco", eco_post)
     add_route("GET", "/favicon.ico", favicon)
+    add_route("GET",  "/login", login_get)
+    add_route("POST", "/login", login_post)
+    add_route("GET",  "/area", area)
+    add_route("GET",  "/logout", logout)   
 
 def favicon(req: Request) -> bytes:
     # 204 sem corpo, só para silenciar o pedido do browser
@@ -102,3 +108,29 @@ def render_404() -> bytes:
         return build_response(404, body, content_type="text/html; charset=utf-8")
     # fallback simples
     return build_response(404, b"<!doctype html><meta charset='utf-8'><h1>404 Not Found</h1>")
+
+def login_get(req: Request) -> bytes:
+    # Se já tiver sessão válida, redireciona direto
+    tok = req.cookies.get(COOKIE_NAME)
+    if tok and verify_token(tok):
+        return redirect("/area")
+    return render_page("login.html", title="Login • BrasaHTTP")
+
+def login_post(req: Request) -> bytes:
+    nome = req.form.get("nome", [""])[0].strip()
+    if not nome:
+        return build_response(400, b"<!doctype html><meta charset='utf-8'><h1>400</h1><p>Nome obrigat\u00f3rio</p>")
+    cookie = build_session_cookie({"nome": nome}, max_age=7200, secure=False)  # secure=False em HTTP
+    return redirect("/area", extra_headers={"Set-Cookie": cookie})
+
+def area(req: Request) -> bytes:
+    tok = req.cookies.get(COOKIE_NAME)
+    data = verify_token(tok) if tok else None
+    if not data:
+        return redirect("/login")
+    nome = data.get("nome", "visitante")
+    return render_page("area.html", title="Área • BrasaHTTP", nome=nome)
+
+def logout(req: Request) -> bytes:
+    clear = build_clear_session_cookie()
+    return redirect("/", extra_headers={"Set-Cookie": clear})
