@@ -5,6 +5,7 @@ from app.responses import build_response
 from app.staticserve import serve_static
 from pathlib import Path
 from app.staticserve import serve_static, STATIC_ROOT
+from app.templating import render_page
 
 @dataclass
 class Request:
@@ -49,38 +50,16 @@ def dispatch(req: Request) -> bytes:
 
 def home(req: Request) -> bytes:
     nome = req.query.get("nome", ["mundo"])[0]
-    body = f"""<!doctype html>
-<html lang="pt-BR"><meta charset="utf-8">
-<title>BrasaHTTP</title>
-<link rel="stylesheet" href="/static/style.css">
-<h1>BrasaHTTP </h1>
-<p>Olá, {html_escape(nome)}!</p>
-<p>Rotas: <a href="/">/</a> · <a href="/sobre">/sobre</a> · <a href="/saudacao?nome=Mateus">/saudacao</a></p>
-</html>"""
-    return build_response(200, body.encode("utf-8"))
+    return render_page("home.html", title="BrasaHTTP", nome=nome)
 
 
 def sobre(req: Request) -> bytes:
-    body = """<!doctype html>
-<html lang="pt-BR"><meta charset="utf-8">
-<title>Sobre</title>
-<h1>Sobre</h1>
-<p>Servidor minimalista em Python stdlib para estudo.</p>
-<p>Agora com <strong>roteador</strong> e <strong>query string</strong>.</p>
-<p><a href="/">voltar</a></p>
-</html>"""
-    return build_response(200, body.encode("utf-8"))
+    ua = req.headers.get("user-agent", "desconhecido")
+    return render_page("sobre.html", title="Sobre • BrasaHTTP", ua=ua)
 
 def saudacao(req: Request) -> bytes:
     nome = req.query.get("nome", ["mundo"])[0]
-    body = f"""<!doctype html>
-<html lang="pt-BR"><meta charset="utf-8">
-<title>Saudação</title>
-<h1>Saudação</h1>
-<p>Olá, {html_escape(nome)}!</p>
-<p><a href="/">voltar</a></p>
-</html>"""
-    return build_response(200, body.encode("utf-8"))
+    return render_page("saudacao.html", title="Saudação • BrasaHTTP", nome=nome)
 
 def init_routes() -> None:
     """Registra as rotas iniciais do projeto."""
