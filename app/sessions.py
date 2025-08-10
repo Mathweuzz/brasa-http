@@ -26,7 +26,7 @@ def get_secret() -> bytes:
     return _SECRET
 
 def _b64u_encode(b: bytes) -> str:
-    return base64.urlsafe_b64encode(b).rstrip(b"=").decode("acsii")
+    return base64.urlsafe_b64encode(b).rstrip(b"=").decode("ascii")
 
 def _b64u_decode(s: str) -> bytes:
     pad = "=" * ((4 - len(s) % 4) % 4)
@@ -79,4 +79,3 @@ def build_clear_session_cookie() -> str:
     past = int(time.time()) - 3600
     return build_set_cookie(COOKIE_NAME, "expired", http_only=True, same_site="Lax", max_age=0, expires_ts=past, path="/")
 
-    
