@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Callable, Dict, Tuple
 from html import escape as html_escape
 from app.responses import build_response
+from app.staticserve import serve_static
 
 @dataclass
 class Request:
@@ -25,11 +26,14 @@ def _allowed_methods_for_path(path: str):
 
 def dispatch(req: Request) -> bytes:
     """Encontra o handler para (method, path). 404/405 conforme o caso."""
+    # Estáticos por prefixo
+    if req.path.startswith("/static/"):
+        return serve_static(req)
+
     handler = _routes.get((req.method, req.path))
     if handler is not None:
-        return handler(req)  # <- chama o handler quando existe
+        return handler(req)
 
-    # Não há handler exato para (method, path): verifica se há outros métodos para esse path
     methods = _allowed_methods_for_path(req.path)
     if methods:
         return build_response(

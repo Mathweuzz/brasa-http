@@ -3,7 +3,9 @@ from email.utils import formatdate
 # Mapa de códigos HTTP -> razão (texto curto)
 STATUS_REASONS = {
     200: "OK",
+    304: "Not Modified",
     400: "Bad Request",
+    403: "Forbidden",
     404: "Not Found",
     405: "Method Not Allowed",
 }
