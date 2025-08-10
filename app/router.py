@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from typing import Callable, Dict, Tuple
 from html import escape as html_escape
 from app.responses import build_response
-from app.staticserve import serve_static
 from pathlib import Path
 from app.staticserve import serve_static, STATIC_ROOT
 from app.templating import render_page
@@ -16,6 +15,8 @@ class Request:
     version: str #http/1.1
     headers: dict # headers em minusculo
     remote_addr: str # ip do cliente (string)
+    body: bytes # corpo bruto
+    form: dict # dict[str, list[str]] quandp form-ur lencoded; caso contrario {}
 
 RouteKey = Tuple[str, str] # (METHOD, PATH)
 _routes: Dict[RouteKey, Callable[[Request], bytes]] = {}
@@ -66,6 +67,53 @@ def init_routes() -> None:
     add_route("GET", "/", home)
     add_route("GET", "/sobre", sobre)
     add_route("GET", "/saudacao", saudacao)
+    add_route("GET", "/eco", eco_get)
+    add_route("POST", "/eco", eco_post)
+
+def eco_get(req: Request) -> bytes:
+    # Formulário simples (GET)
+    html = """<h1>Echo (formulário)</h1>
+<p>Envie dados por POST (application/x-www-form-urlencoded).</p>
+<form method="POST" action="/eco">
+  <label>Nome: <input type="text" name="nome"></label><br><br>
+  <label>Mensagem:<br>
+    <textarea name="mensagem" rows="4" cols="40"></textarea>
+  </label><br><br>
+  <button type="submit">Enviar</button>
+</form>
+<p><a href="/">voltar</a></p>
+"""
+    return render_page("home.html", title="Echo • BrasaHTTP", nome="mundo").replace(
+        b"</main></body></html>",
+        f"{html}".encode("utf-8") + b"</main></body></html>"
+    )
+
+def eco_post(req: Request) -> bytes:
+    # Aceita somente application/x-www-form-urlencoded
+    ctype = req.headers.get("content-type", "")
+    if not ctype.lower().startswith("application/x-www-form-urlencoded"):
+        return build_response(
+            415,
+            b"<!doctype html><meta charset='utf-8'><h1>415 Unsupported Media Type</h1>"
+            b"<p>Use Content-Type: application/x-www-form-urlencoded</p>",
+            extra_headers={"Accept": "application/x-www-form-urlencoded"},
+        )
+
+    nome = req.form.get("nome", ["(sem nome)"])[0]
+    msg  = req.form.get("mensagem", ["(sem mensagem)"])[0]
+
+    body = f"""<!doctype html>
+<html lang="pt-BR"><meta charset="utf-8">
+<title>Echo</title>
+<link rel="stylesheet" href="/static/style.css">
+<main class="container">
+  <h1>Eco do POST</h1>
+  <p><strong>Nome:</strong> {html_escape(nome)}</p>
+  <p><strong>Mensagem:</strong> {html_escape(msg)}</p>
+  <p><a href="/eco">voltar ao formulário</a> — <a href="/">home</a></p>
+</main>
+""".encode("utf-8")
+    return build_response(200, body, content_type="text/html; charset=utf-8")
 
 def render_404() -> bytes:
     """Tenta servir o app/static/404.html; se não existir, usa fallback."""
