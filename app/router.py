@@ -3,6 +3,8 @@ from typing import Callable, Dict, Tuple
 from html import escape as html_escape
 from app.responses import build_response
 from app.staticserve import serve_static
+from pathlib import Path
+from app.staticserve import serve_static, STATIC_ROOT
 
 @dataclass
 class Request:
@@ -41,8 +43,7 @@ def dispatch(req: Request) -> bytes:
             b"<h1>405 Method Not Allowed</h1>",
             {"Allow": ", ".join(methods)},
         )
-    return build_response(404, b"<h1>404 Not Found</h1>")
-
+    return render_404()
 
 # ---------- Handlers (views) de exemplo ----------
 
@@ -51,11 +52,13 @@ def home(req: Request) -> bytes:
     body = f"""<!doctype html>
 <html lang="pt-BR"><meta charset="utf-8">
 <title>BrasaHTTP</title>
-<h1>BrasaHTTP</h1>
+<link rel="stylesheet" href="/static/style.css">
+<h1>BrasaHTTP </h1>
 <p>Olá, {html_escape(nome)}!</p>
 <p>Rotas: <a href="/">/</a> · <a href="/sobre">/sobre</a> · <a href="/saudacao?nome=Mateus">/saudacao</a></p>
 </html>"""
     return build_response(200, body.encode("utf-8"))
+
 
 def sobre(req: Request) -> bytes:
     body = """<!doctype html>
@@ -84,3 +87,12 @@ def init_routes() -> None:
     add_route("GET", "/", home)
     add_route("GET", "/sobre", sobre)
     add_route("GET", "/saudacao", saudacao)
+
+def render_404() -> bytes:
+    """Tenta servir o app/static/404.html; se não existir, usa fallback."""
+    custom = STATIC_ROOT / "404.html"
+    if custom.exists() and custom.is_file():
+        body = custom.read_bytes()
+        return build_response(404, body, content_type="text/html; charset=utf-8")
+    # fallback simples
+    return build_response(404, b"<!doctype html><meta charset='utf-8'><h1>404 Not Found</h1>")
