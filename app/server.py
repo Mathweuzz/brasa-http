@@ -2,6 +2,10 @@ import socket # comunicação tcp
 from urllib.parse import urlsplit, parse_qs
 from app.responses import build_response
 from app.router import Request, dispatch, init_routes
+import traceback
+import os
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 HOST = '0.0.0.0' # escuta em todas as interfaces locais
 PORT = 8080 # porta do nosso servidor
@@ -9,6 +13,7 @@ BACKLOG = 50 # fila de conexões pendentes
 BUF_SIZE = 4096 # leitura de bloco de 4 kib
 MAX_HEADER = 16 * 1024 # limite de 16kib para cabeçalhos (defesa básica)
 MAX_BODY = 1 * 1024 * 1024 # 1MiB: limita para corpo
+MAX_WORKERS = min(32, (os.cpu_count() or 2) * 5)
 
 def read_request(conn: socket.socket):
     """
@@ -116,35 +121,23 @@ def serve_forever():
         srv.listen(BACKLOG)
         print(f"BrasaHTTP escutando em http://{HOST}:{PORT} (CTRL+C para sair)")
 
-        try:
-            while True:
-                conn, addr = srv.accept()
-                with conn:
-                    try:
-                        method, target, version, headers, body = read_request(conn)
-                        req = to_request(method, target, version, headers, body, addr[0])
-                        print(f"{addr[0]} {req.method} {req.path} {req.query} len(body)={len(req.body)}")
-                        resp = dispatch(req)
-                    except ValueError as e:
-                        resp = build_response(400, f"<h1>400 Bad Request</h1><p>{e}</p>".encode("utf-8"))
-                    except Exception:
-                        resp = build_response(400, b"<h1>400 Bad Request</h1>")
-                    conn.sendall(resp)
-        except KeyboardInterrupt:
-            print("\nEncerrando BrasaHTTP...")
+        # Pool de threads para atender conexões
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS, thread_name_prefix="brasa") as pool:
+            try:
+                while True:
+                    conn, addr = srv.accept()   # NÃO use 'with conn' aqui
+                    pool.submit(serve_connection, conn, addr)
+            except KeyboardInterrupt:
+                print("\nEncerrando BrasaHTTP...")
+                # saindo do 'with' da pool -> espera workers terminarem
 
 def parse_content_type(value: str) -> tuple[str, dict]:
-    """
-    Retorna (media_type, params) em minúsculo.
-    Ex.: "application/x-www-form-urlencoded; charset=utf-8"
-    -> ("application/x-www-form-urlencoded", {"charset": "utf-8"})
-    """
     media = value or ""
     parts = [p.strip() for p in media.split(";")]
     mt = parts[0].lower() if parts else ""
     params = {}
     for p in parts[1:]:
-        if "=" in parts[1:]:
+        if "=" in p:
             k, v = p.split("=", 1)
             params[k.strip().lower()] = v.strip().strip('"')
     return mt, params
@@ -159,6 +152,29 @@ def parse_cookies(header_value: str) -> dict:
             cookies[k.strip()] = v.strip()
     return cookies
 
+
+def serve_connection(conn: socket.socket, addr: tuple[str, int]) -> None:
+    """Atende UMA conexão: lê requisição, despacha, responde e fecha."""
+    try:
+        method, target, version, headers, body = read_request(conn)
+        req = to_request(method, target, version, headers, body, addr[0])
+        tname = threading.current_thread().name
+        print(f"[{tname}] {addr[0]} {req.method} {req.path} q={req.query} body={len(req.body)}")
+        resp = dispatch(req)
+    except ValueError as e:
+        resp = build_response(400, f"<h1>400 Bad Request</h1><p>{e}</p>".encode("utf-8"))
+    except Exception:
+        resp = build_response(400, b"<h1>400 Bad Request</h1>")
+    try:
+        conn.sendall(resp)
+    except Exception:
+        pass
+    finally:
+        try:
+            conn.shutdown(socket.SHUT_RDWR)
+        except Exception:
+            pass
+        conn.close()
 
 if __name__ == "__main__":
     serve_forever()
