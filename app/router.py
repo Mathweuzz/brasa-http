@@ -1,3 +1,82 @@
-"""(Passo 3 vai nascer aqui)
-Responsabilidade: decidir qual função trata a rota.
-"""
+from dataclasses import dataclass
+from typing import Callable, Dict, Tuple
+from html import escape as html_escape
+from app.responses import build_response
+
+@dataclass
+class Request:
+    """Representa uma requisição já parseada para as views/handlers"""
+    method: str # "GET", "POST", ...
+    path: str #ex.: "/sobre" (sem query)
+    query: dict # dict[strm list[str]] de parse_qs
+    version: str #http/1.1
+    headers: dict # headers em minusculo
+    remote_addr: str # ip do cliente (string)
+
+RouteKey = Tuple[str, str] # (METHOD, PATH)
+_routes: Dict[RouteKey, Callable[[Request], bytes]] = {}
+
+def add_route(method: str, path: str, handler: Callable[[Request], bytes]) -> None:
+    method = method.upper()
+    _routes[(method, path)] = handler
+
+def _allowed_methods_for_path(path: str):
+    return sorted({m for (m, p) in _routes.keys() if p == path})
+
+def dispatch(req: Request) -> bytes:
+    """Encontra o handler para (method, path). 404/405 conforme o caso."""
+    handler = _routes.get((req.method, req.path))
+    if handler is not None:
+        return handler(req)  # <- chama o handler quando existe
+
+    # Não há handler exato para (method, path): verifica se há outros métodos para esse path
+    methods = _allowed_methods_for_path(req.path)
+    if methods:
+        return build_response(
+            405,
+            b"<h1>405 Method Not Allowed</h1>",
+            {"Allow": ", ".join(methods)},
+        )
+    return build_response(404, b"<h1>404 Not Found</h1>")
+
+
+# ---------- Handlers (views) de exemplo ----------
+
+def home(req: Request) -> bytes:
+    nome = req.query.get("nome", ["mundo"])[0]
+    body = f"""<!doctype html>
+<html lang="pt-BR"><meta charset="utf-8">
+<title>BrasaHTTP</title>
+<h1>BrasaHTTP</h1>
+<p>Olá, {html_escape(nome)}!</p>
+<p>Rotas: <a href="/">/</a> · <a href="/sobre">/sobre</a> · <a href="/saudacao?nome=Mateus">/saudacao</a></p>
+</html>"""
+    return build_response(200, body.encode("utf-8"))
+
+def sobre(req: Request) -> bytes:
+    body = """<!doctype html>
+<html lang="pt-BR"><meta charset="utf-8">
+<title>Sobre</title>
+<h1>Sobre</h1>
+<p>Servidor minimalista em Python stdlib para estudo.</p>
+<p>Agora com <strong>roteador</strong> e <strong>query string</strong>.</p>
+<p><a href="/">voltar</a></p>
+</html>"""
+    return build_response(200, body.encode("utf-8"))
+
+def saudacao(req: Request) -> bytes:
+    nome = req.query.get("nome", ["mundo"])[0]
+    body = f"""<!doctype html>
+<html lang="pt-BR"><meta charset="utf-8">
+<title>Saudação</title>
+<h1>Saudação</h1>
+<p>Olá, {html_escape(nome)}!</p>
+<p><a href="/">voltar</a></p>
+</html>"""
+    return build_response(200, body.encode("utf-8"))
+
+def init_routes() -> None:
+    """Registra as rotas iniciais do projeto."""
+    add_route("GET", "/", home)
+    add_route("GET", "/sobre", sobre)
+    add_route("GET", "/saudacao", saudacao)
