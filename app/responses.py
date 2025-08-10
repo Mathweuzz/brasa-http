@@ -27,7 +27,7 @@ def build_response(
     reason = STATUS_REASONS.get(status, "OK")
     headers = {
         "Date": http_date(),
-        "Server": "BrasaHTTP/0.2",
+        "Server": "BrasaHTTP/0.4",
         "Content-Type": content_type,
         "Content-Length": str(len(body)),
         "Connection": "close",

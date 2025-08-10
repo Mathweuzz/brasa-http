@@ -7,6 +7,8 @@ import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from app.db import init_db
+from app.config import load_settings
+from app.logging_setup import setup_logging
 
 HOST = '0.0.0.0' # escuta em todas as interfaces locais
 PORT = 8080 # porta do nosso servidor
@@ -114,25 +116,6 @@ def to_request(method: str, target: str, version: str, headers: dict, body: byte
         cookies=cookies,
     )
 
-def serve_forever():
-    init_db()
-    init_routes()
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as srv:
-        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        srv.bind((HOST, PORT))
-        srv.listen(BACKLOG)
-        print(f"BrasaHTTP escutando em http://{HOST}:{PORT} (CTRL+C para sair)")
-
-        # Pool de threads para atender conexões
-        with ThreadPoolExecutor(max_workers=MAX_WORKERS, thread_name_prefix="brasa") as pool:
-            try:
-                while True:
-                    conn, addr = srv.accept()   # NÃO use 'with conn' aqui
-                    pool.submit(serve_connection, conn, addr)
-            except KeyboardInterrupt:
-                print("\nEncerrando BrasaHTTP...")
-                # saindo do 'with' da pool -> espera workers terminarem
-
 def parse_content_type(value: str) -> tuple[str, dict]:
     media = value or ""
     parts = [p.strip() for p in media.split(";")]
@@ -154,18 +137,44 @@ def parse_cookies(header_value: str) -> dict:
             cookies[k.strip()] = v.strip()
     return cookies
 
+def _parse_status_and_cl(resp: bytes) -> tuple[int, int]:
+    try:
+        head_end = resp.find(b"\r\n\r\n")
+        head = resp[:head_end if head_end != -1 else len(resp)]
+        first_line_end = head.find(b"\r\n")
+        status_line = head[:first_line_end if first_line_end != -1 else len(head)].decode("iso-8859-1", "replace")
+        parts = status_line.split(" ", 2)
+        status = int(parts[1]) if len(parts) >= 2 else 200
+        cl = None
+        for line in head.split(b"\r\n")[1:]:
+            if line.lower().startswith(b"content-length:"):
+                try:
+                    cl = int(line.split(b":", 1)[1].strip())
+                    break
+                except Exception:
+                    pass
+        if cl is None and head_end != -1:
+            cl = len(resp) - (head_end + 4)  # fallback
+        return status, int(cl or 0)
+    except Exception:
+        return 200, 0
+
+
+
+APP_LOG = None
+ACC_LOG = None
 
 def serve_connection(conn: socket.socket, addr: tuple[str, int]) -> None:
-    """Atende UMA conexão: lê requisição, despacha, responde e fecha."""
+    global APP_LOG, ACC_LOG
     try:
         method, target, version, headers, body = read_request(conn)
         req = to_request(method, target, version, headers, body, addr[0])
-        tname = threading.current_thread().name
-        print(f"[{tname}] {addr[0]} {req.method} {req.path} q={req.query} body={len(req.body)}")
         resp = dispatch(req)
     except ValueError as e:
+        if APP_LOG: APP_LOG.info("400 Bad Request de %s: %s", addr[0], e)
         resp = build_response(400, f"<h1>400 Bad Request</h1><p>{e}</p>".encode("utf-8"))
-    except Exception:
+    except Exception as e:
+        if APP_LOG: APP_LOG.exception("Erro inesperado atendendo %s", addr[0])
         resp = build_response(400, b"<h1>400 Bad Request</h1>")
     try:
         conn.sendall(resp)
@@ -177,6 +186,54 @@ def serve_connection(conn: socket.socket, addr: tuple[str, int]) -> None:
         except Exception:
             pass
         conn.close()
+        # Access log (só depois de enviar)
+        try:
+            status, clen = _parse_status_and_cl(resp)
+            ua = (req.headers.get("user-agent") if 'req' in locals() else "-") or "-"
+            if ACC_LOG:
+                # Formato: IP "METHOD PATH VERSION" status bytes UA
+                ACC_LOG.info('%s "%s %s %s" %d %d "%s"',
+                             addr[0],
+                             req.method if 'req' in locals() else "-",
+                             req.path if 'req' in locals() else "-",
+                             req.version if 'req' in locals() else "-",
+                             status, clen, ua)
+        except Exception:
+            pass
+
+def serve_forever():
+    from app.db import init_db  # evita ciclos
+    cfg = load_settings()        # lê config/json + env
+    app_log, acc_log = setup_logging(cfg.logging)
+
+    global APP_LOG, ACC_LOG
+    APP_LOG, ACC_LOG = app_log, acc_log
+
+    init_db()
+    init_routes()
+
+    host = cfg.server.host
+    port = cfg.server.port
+    backlog = cfg.server.backlog
+
+    if APP_LOG: APP_LOG.info("Iniciando BrasaHTTP em %s:%d (workers=%d)", host, port, MAX_WORKERS)
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as srv:
+        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        srv.bind((host, port))
+        srv.listen(backlog)
+        print(f"BrasaHTTP escutando em http://{host}:{port} (CTRL+C para sair)")
+        if APP_LOG: APP_LOG.info("Servidor iniciado e escutando")
+
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS, thread_name_prefix="brasa") as pool:
+            try:
+                while True:
+                    conn, addr = srv.accept()
+                    pool.submit(serve_connection, conn, addr)
+            except KeyboardInterrupt:
+                print("\nEncerrando BrasaHTTP...")
+                if APP_LOG: APP_LOG.info("Encerrando por KeyboardInterrupt")
+
 
 if __name__ == "__main__":
     serve_forever()

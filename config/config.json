@@ -1,0 +1,11 @@
+{
+  "server": { "host": "0.0.0.0", "port": 8080, "backlog": 50 },
+  "logging": {
+    "level": "INFO",
+    "dir": "logs",
+    "app_file": "app.log",
+    "access_file": "access.log",
+    "max_bytes": 1048576,
+    "backup_count": 5
+  }
+}
