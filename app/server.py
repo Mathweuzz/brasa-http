@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 from app.db import init_db
 from app.config import load_settings
 from app.logging_setup import setup_logging
+import ssl
 
 HOST = '0.0.0.0' # escuta em todas as interfaces locais
 PORT = 8080 # porta do nosso servidor
@@ -84,7 +85,7 @@ def read_request(conn: socket.socket):
 
     return method, target, version, headers, body
 
-def to_request(method: str, target: str, version: str, headers: dict, body: bytes, remote_addr: str) -> Request:
+def to_request(method: str, target: str, version: str, headers: dict, body: bytes, remote_addr: str, is_secure: bool) -> Request:
     parts = urlsplit(target)
     path = parts.path or "/"
     query = parse_qs(parts.query, keep_blank_values=True)
@@ -114,6 +115,7 @@ def to_request(method: str, target: str, version: str, headers: dict, body: byte
         body=body,
         form=form,
         cookies=cookies,
+        is_secure=is_secure,
     )
 
 def parse_content_type(value: str) -> tuple[str, dict]:
@@ -164,12 +166,16 @@ def _parse_status_and_cl(resp: bytes) -> tuple[int, int]:
 APP_LOG = None
 ACC_LOG = None
 
-def serve_connection(conn: socket.socket, addr: tuple[str, int]) -> None:
+def serve_connection(conn: socket.socket, addr: tuple[str, int], is_secure: bool) -> None:
     global APP_LOG, ACC_LOG
     try:
         method, target, version, headers, body = read_request(conn)
-        req = to_request(method, target, version, headers, body, addr[0])
+        req = to_request(method, target, version, headers, body, addr[0], is_secure)
         resp = dispatch(req)
+    except (TimeoutError, socket.timeout):
+        # cliente conectou mas não enviou request completo a tempo
+        if APP_LOG: APP_LOG.info("408 Request Timeout de %s", addr[0])
+        resp = build_response(408, b"<!doctype html><meta charset='utf-8'><h1>408 Request Timeout</h1>")        
     except ValueError as e:
         if APP_LOG: APP_LOG.info("400 Bad Request de %s: %s", addr[0], e)
         resp = build_response(400, f"<h1>400 Bad Request</h1><p>{e}</p>".encode("utf-8"))
@@ -202,34 +208,51 @@ def serve_connection(conn: socket.socket, addr: tuple[str, int]) -> None:
             pass
 
 def serve_forever():
-    from app.db import init_db  # evita ciclos
-    cfg = load_settings()        # lê config/json + env
+    from app.db import init_db
+    cfg = load_settings()
     app_log, acc_log = setup_logging(cfg.logging)
-
     global APP_LOG, ACC_LOG
     APP_LOG, ACC_LOG = app_log, acc_log
 
     init_db()
     init_routes()
 
+    use_tls = cfg.tls.enabled
     host = cfg.server.host
-    port = cfg.server.port
+    port = (cfg.tls.port if use_tls else cfg.server.port)
     backlog = cfg.server.backlog
 
-    if APP_LOG: APP_LOG.info("Iniciando BrasaHTTP em %s:%d (workers=%d)", host, port, MAX_WORKERS)
+    tls_ctx = None
+    if use_tls:
+        tls_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        tls_ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+        tls_ctx.load_cert_chain(certfile=cfg.tls.cert_file, keyfile=cfg.tls.key_file)
+        # ciphers e opções adicionais poderiam ser ajustados aqui
+
+    if APP_LOG:
+        APP_LOG.info("Iniciando BrasaHTTP em %s://%s:%d (workers=%d)",
+                     "https" if use_tls else "http", host, port, MAX_WORKERS)
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as srv:
         srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         srv.bind((host, port))
         srv.listen(backlog)
-        print(f"BrasaHTTP escutando em http://{host}:{port} (CTRL+C para sair)")
+        print(f"BrasaHTTP escutando em {'https' if use_tls else 'http'}://{host}:{port} (CTRL+C para sair)")
         if APP_LOG: APP_LOG.info("Servidor iniciado e escutando")
 
         with ThreadPoolExecutor(max_workers=MAX_WORKERS, thread_name_prefix="brasa") as pool:
             try:
                 while True:
                     conn, addr = srv.accept()
-                    pool.submit(serve_connection, conn, addr)
+                    if use_tls:
+                        try:
+                            conn = tls_ctx.wrap_socket(conn, server_side=True)
+                        except ssl.SSLError as e:
+                            if APP_LOG: APP_LOG.info("Falha no handshake TLS de %s: %s", addr[0], e)
+                            try: conn.close()
+                            except Exception: pass
+                            continue
+                    pool.submit(serve_connection, conn, addr, use_tls)
             except KeyboardInterrupt:
                 print("\nEncerrando BrasaHTTP...")
                 if APP_LOG: APP_LOG.info("Encerrando por KeyboardInterrupt")

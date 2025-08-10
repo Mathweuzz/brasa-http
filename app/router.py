@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Callable, Dict, Tuple
 from html import escape as html_escape
-from app.responses import build_response, redirect
+from app.responses import build_response, redirect, build_chunked_response
 from pathlib import Path
 from app.staticserve import serve_static, STATIC_ROOT
 from app.templating import render_page
@@ -20,6 +20,7 @@ class Request:
     body: bytes # corpo bruto
     form: dict # dict[str, list[str]] quandp form-ur lencoded; caso contrario {}
     cookies: dict
+    is_secure: bool
 
 RouteKey = Tuple[str, str] # (METHOD, PATH)
 _routes: Dict[RouteKey, Callable[[Request], bytes]] = {}
@@ -78,13 +79,14 @@ def init_routes() -> None:
     add_route("GET",  "/area", area)
     add_route("GET",  "/logout", logout)   
     add_route("GET", "/eco/list", eco_list)
+    add_route("GET", "/stream", stream)
 
 def favicon(req: Request) -> bytes:
     # 204 sem corpo, só para silenciar o pedido do browser
     return build_response(204, b"", content_type="image/x-icon")
 
 def eco_get(req: Request) -> bytes:
-    return render_page("eco.html", title="Echo • BrasaHTTP")
+    return render_page("eco.html", title="Echo • BrasaHTTP", accept_encoding=req.headers.get("accept-encoding"))
 
 def eco_post(req: Request) -> bytes:
     ctype = req.headers.get("content-type", "")
@@ -107,7 +109,7 @@ def eco_post(req: Request) -> bytes:
         # falha no DB -> 500 simples (poderia logar)
         return build_response(500, b"<!doctype html><meta charset='utf-8'><h1>500</h1><p>DB error</p>")
 
-    return render_page("eco_result.html", title="Echo • BrasaHTTP", nome=nome, mensagem=msg)
+    return render_page("eco_result.html", title="Echo • BrasaHTTP", nome=nome, mensagem=msg, accept_encoding=req.headers.get("accept-encoding"))
 
 def eco_list(req: Request) -> bytes:
     # pega limite via query (?n=50), default 20
@@ -142,7 +144,7 @@ def eco_list(req: Request) -> bytes:
     from app.templating import Safe, render_page
     html_linhas = Safe("\n".join(linhas))
 
-    return render_page("eco_list.html", title="Mensagens • BrasaHTTP", qtd=len(rows), linhas=html_linhas)
+    return render_page("eco_list.html", title="Mensagens • BrasaHTTP", qtd=len(rows), linhas=html_linhas, accept_encoding=req.headers.get("accept-encoding"))
 
 def render_404() -> bytes:
     """Tenta servir o app/static/404.html; se não existir, usa fallback."""
@@ -158,7 +160,7 @@ def login_get(req: Request) -> bytes:
     tok = req.cookies.get(COOKIE_NAME)
     if tok and verify_token(tok):
         return redirect("/area")
-    return render_page("login.html", title="Login • BrasaHTTP")
+    return render_page("login.html", title="Login • BrasaHTTP", accept_encoding=req.headers.get("accept-encoding"))
 
 def login_post(req: Request) -> bytes:
     nome = req.form.get("nome", [""])[0].strip()
@@ -167,7 +169,7 @@ def login_post(req: Request) -> bytes:
             400,
             "<!doctype html><meta charset='utf-8'><h1>400</h1><p>Nome obrigatório</p>".encode("utf-8")
         )
-    cookie = build_session_cookie({"nome": nome}, max_age=7200, secure=False)
+    cookie = build_session_cookie({"nome": nome}, max_age=7200, secure=req.is_secure)
     return redirect("/area", extra_headers={"Set-Cookie": cookie})
 
 def area(req: Request) -> bytes:
@@ -176,8 +178,17 @@ def area(req: Request) -> bytes:
     if not data:
         return redirect("/login")
     nome = data.get("nome", "visitante")
-    return render_page("area.html", title="Área • BrasaHTTP", nome=nome)
+    return render_page("area.html", title="Área • BrasaHTTP", nome=nome, accept_encoding=req.headers.get("accept-encoding"))
 
 def logout(req: Request) -> bytes:
     clear = build_clear_session_cookie()
     return redirect("/", extra_headers={"Set-Cookie": clear})
+
+def stream(req: Request) -> bytes:
+    # didático: 3 "pedacinhos" (não é streaming real; só mostra o formato)
+    chunks = [
+        b"primeiro pedaco\n",
+        b"segundo pedaco\n",
+        b"terceiro pedaco\n",
+    ]
+    return build_chunked_response(200, chunks, content_type="text/plain; charset=utf-8")

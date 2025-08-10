@@ -7,5 +7,11 @@
     "access_file": "access.log",
     "max_bytes": 1048576,
     "backup_count": 5
+  },
+  "tls": {
+    "enabled": true,
+    "port": 8443,
+    "cert_file": "config/tls/server.crt",
+    "key_file": "config/tls/server.key"
   }
 }
