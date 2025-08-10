@@ -8,3 +8,9 @@ body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line
 h1 { margin: 1rem 0; font-size: 1.8rem; }
 a { color: var(--link); text-decoration: none; }
 a:hover { text-decoration: underline; }
+
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.95rem; }
+th, td { border: 1px solid #4443; padding: 0.4rem 0.6rem; vertical-align: top; }
+thead th { background: #4441; text-align: left; }
+tbody tr:nth-child(even) { background: #4441; }
+code { background: #4442; padding: 0.1rem 0.3rem; border-radius: 4px; }

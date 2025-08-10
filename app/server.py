@@ -6,6 +6,7 @@ import traceback
 import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from app.db import init_db
 
 HOST = '0.0.0.0' # escuta em todas as interfaces locais
 PORT = 8080 # porta do nosso servidor
@@ -114,6 +115,7 @@ def to_request(method: str, target: str, version: str, headers: dict, body: byte
     )
 
 def serve_forever():
+    init_db()
     init_routes()
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as srv:
         srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
