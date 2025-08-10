@@ -3,7 +3,9 @@ from urllib.parse import unquote
 import mimetypes
 from email.utils import formatdate, parsedate_to_datetime
 from app.responses import build_response
-from app.router import Request
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app.router import Request
 
 # Raiz dos estáticos: app/static
 STATIC_ROOT = Path(__file__).resolve().parent / "static"
@@ -40,7 +42,7 @@ def _guess_content_type(path: Path) -> str:
 def _http_date_from_timestamp(ts: float) -> str:
     return formatdate(ts, usegmt=True)
 
-def serve_static(req: Request) -> bytes:
+def serve_static(req: 'Request') -> bytes:
     """
     Atende URLs /static/... com GET e HEAD.
     Segurança: path traversal bloqueado. Sem listagem de diretório.
