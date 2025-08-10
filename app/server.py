@@ -55,17 +55,24 @@ def read_request(conn: socket.socket):
     if clen < 0 or clen > MAX_BODY:
         raise ValueError("invalid content-length")
 
-    body = rest
-    to_read = clen - len(body)
-    while to_read > 0:
-        chunk = conn.recv(min(BUF_SIZE, to_read))
-        if not chunk:
-            break
-        body += chunk
-        to_read -= len(chunk)
-
-    if len(body) != clen:
-        raise ValueError("incomplete body")
+    # rest = bytes depois de \r\n\r\n
+    body = b""
+    if clen == 0:
+        # ignore qualquer byte extra (pode ser outra req iniciando)
+        body = b""
+    else:
+        body = rest
+        if len(body) < clen:
+            to_read = clen - len(body)
+            while to_read > 0:
+                chunk = conn.recv(min(BUF_SIZE, to_read))
+                if not chunk:
+                    raise ValueError("incomplete body")
+                body += chunk
+                to_read -= len(chunk)
+        else:
+            # veio além do necessário (pode ser início de outra req); ficamos só com o corpo
+            body = body[:clen]
 
     return method, target, version, headers, body
 

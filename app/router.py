@@ -69,6 +69,11 @@ def init_routes() -> None:
     add_route("GET", "/saudacao", saudacao)
     add_route("GET", "/eco", eco_get)
     add_route("POST", "/eco", eco_post)
+    add_route("GET", "/favicon.ico", favicon)
+
+def favicon(req: Request) -> bytes:
+    # 204 sem corpo, só para silenciar o pedido do browser
+    return build_response(204, b"", content_type="image/x-icon")
 
 def eco_get(req: Request) -> bytes:
     return render_page("eco.html", title="Echo • BrasaHTTP")
