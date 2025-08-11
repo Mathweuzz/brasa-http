@@ -1,0 +1,17 @@
+<link rel="stylesheet" href="/static/love.css">
+<section class="love-page">
+  <h1>Recados para a Ninissa</h1>
+  <form method="POST" action="/ninissa/recados" class="love-form">
+    <label>Seu nome (opcional): <input name="autor" maxlength="80" placeholder="Mateus"></label>
+    <label>Mensagem:</label>
+    <textarea name="mensagem" rows="4" maxlength="500" required placeholder="Escreva algo carinhoso..."></textarea>
+    <button type="submit">Enviar recado</button>
+  </form>
+
+  <h2>Últimos recados</h2>
+  <div class="notes">
+    ${lista_recados}
+  </div>
+
+  <p><a href="/ninissa">← voltar ao início</a></p>
+</section>

@@ -32,6 +32,17 @@ def init_db() -> None:
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_eco_created ON eco_messages(created_at DESC);")
 
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS love_notes (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at  TEXT    NOT NULL,
+            author      TEXT    NOT NULL,
+            message     TEXT    NOT NULL
+        );
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_love_created ON love_notes(created_at DESC);")
+
+
 def insert_eco(ip: str, nome: str, mensagem: str, ua: str) -> int:
     """Insere uma mensagem e retorna o id."""
     ts = datetime.utcnow().isoformat(timespec="seconds") + "Z"
@@ -56,3 +67,26 @@ def fetch_recent(limit: int = 20) -> list[dict]:
             (limit,),
         )
         return [dict(row) for row in cur.fetchall()]
+    
+def insert_love_note(author: str, message: str) -> int:
+    from datetime import datetime
+    ts = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+    author = (author or "Anônimo").strip()[:80]
+    message = (message or "").strip()[:500]
+    if not message:
+        raise ValueError("empty message")
+    with _connect() as conn:
+        cur = conn.execute(
+            "INSERT INTO love_notes (created_at, author, message) VALUES (?, ?, ?)",
+            (ts, author, message)
+        )
+        return cur.lastrowid
+
+def fetch_love_notes(limit: int = 20) -> list[dict]:
+    limit = max(1, min(int(limit or 20), 200))
+    with _connect() as conn:
+        cur = conn.execute(
+            "SELECT id, created_at, author, message FROM love_notes ORDER BY id DESC LIMIT ?",
+            (limit,)
+        )
+        return [dict(r) for r in cur.fetchall()]

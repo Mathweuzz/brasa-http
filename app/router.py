@@ -4,9 +4,9 @@ from html import escape as html_escape
 from app.responses import build_response, redirect, build_chunked_response
 from pathlib import Path
 from app.staticserve import serve_static, STATIC_ROOT
-from app.templating import render_page
+from app.templating import render_page, Safe
 from app.sessions import verify_token, build_session_cookie, build_clear_session_cookie, COOKIE_NAME
-from app.db import insert_eco, fetch_recent
+from app.db import insert_eco, fetch_recent, insert_love_note, fetch_love_notes
 
 @dataclass
 class Request:
@@ -80,6 +80,10 @@ def init_routes() -> None:
     add_route("GET",  "/logout", logout)   
     add_route("GET", "/eco/list", eco_list)
     add_route("GET", "/stream", stream)
+    add_route("GET",  "/ninissa", love_home)
+    add_route("GET",  "/ninissa/recados", love_recados_get)
+    add_route("POST", "/ninissa/recados", love_recados_post)
+
 
 def favicon(req: Request) -> bytes:
     # 204 sem corpo, só para silenciar o pedido do browser
@@ -192,3 +196,36 @@ def stream(req: Request) -> bytes:
         b"terceiro pedaco\n",
     ]
     return build_chunked_response(200, chunks, content_type="text/plain; charset=utf-8")
+
+def love_home(req: Request) -> bytes:
+    return render_page("love_home.html", title="Ninissa & Mateus",
+                       accept_encoding=req.headers.get("accept-encoding"))
+
+def love_recados_get(req: Request) -> bytes:
+    rows = fetch_love_notes(30)
+    itens = []
+    for r in rows:
+        itens.append(
+            f"<article class='note'><p>{html_escape(r['message'])}</p>"
+            f"<p><strong>— {html_escape(r['author'])}</strong> · "
+            f"<time datetime='{html_escape(r['created_at'])}'>{html_escape(r['created_at'])}</time></p></article>"
+        )
+    lista = Safe("\n".join(itens) if itens else "<p>Seja o primeiro a deixar um recado. 💌</p>")
+    return render_page("love_recados.html", title="Recados • Ninissa & Mateus",
+                       lista_recados=lista,
+                       accept_encoding=req.headers.get("accept-encoding"))
+
+def love_recados_post(req: Request) -> bytes:
+    ctype = (req.headers.get("content-type") or "").lower()
+    if not ctype.startswith("application/x-www-form-urlencoded"):
+        return build_response(415, b"<!doctype html><meta charset='utf-8'><h1>415</h1><p>Use form urlencoded</p>")
+    autor = req.form.get("autor", ["Anônimo"])[0].strip()[:80]
+    msg   = req.form.get("mensagem", [""])[0].strip()
+    if not msg:
+        return build_response(400, "<!doctype html><meta charset='utf-8'><h1>400</h1><p>Mensagem obrigatória.</p>".encode("utf-8"))
+    try:
+        insert_love_note(autor, msg)
+    except Exception:
+        return build_response(500, b"<!doctype html><meta charset='utf-8'><h1>500</h1><p>Erro salvando recado.</p>")
+    # redireciona de volta (PRG pattern)
+    return redirect("/ninissa/recados")

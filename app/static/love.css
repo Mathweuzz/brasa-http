@@ -1,0 +1,33 @@
+:root { --pink:#ff4f8b; --bg:#fff7fb; --fg:#311; --muted:#aa7; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#120b12; --fg:#f7e9ec; --muted:#bba; }
+}
+.love-hero, .love-page { max-width:720px; margin:2.5rem auto; padding:0 1rem; text-align:center; }
+.love-hero h1 { font-size:2.2rem; margin:0.6rem 0; }
+.love-nav { margin-top:0.8rem; display:flex; gap:.8rem; justify-content:center; flex-wrap:wrap; }
+.love-nav a { background:var(--pink); color:white; padding:.5rem .8rem; border-radius:999px; text-decoration:none; }
+.love-nav a:hover { opacity:.9; }
+.heart {
+  --s: 120px;
+  width:var(--s); height:var(--s);
+  background:var(--pink);
+  position:relative; margin:1rem auto 0; transform:rotate(-45deg);
+  animation: puff 2.2s ease-in-out infinite;
+  box-shadow:0 8px 22px #0003;
+}
+.heart::before, .heart::after{
+  content:""; position:absolute; width:var(--s); height:var(--s);
+  background:var(--pink); border-radius:50%;
+}
+.heart::before{ left:0; top:-50%; }
+.heart::after{ left:50%; top:0; }
+@keyframes puff {
+  0%,100% { transform:rotate(-45deg) scale(1); }
+  50%     { transform:rotate(-45deg) scale(1.06); }
+}
+.love-form { display:grid; gap:.7rem; text-align:left; margin:1rem auto; max-width:560px; }
+.love-form input, .love-form textarea { width:100%; padding:.5rem .6rem; border:1px solid #0002; border-radius:10px; background:var(--bg); color:var(--fg); }
+.love-form button { padding:.6rem 1rem; border:0; border-radius:12px; background:var(--pink); color:#fff; font-weight:600; }
+.notes { display:grid; gap:.7rem; margin-top:1rem; text-align:left; }
+.note { border:1px solid #0002; border-radius:12px; padding:.6rem .8rem; background:var(--bg); }
+.note time { color:var(--muted); font-size:.9rem; }
