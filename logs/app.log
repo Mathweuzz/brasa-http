@@ -1,0 +1,66 @@
+2025-08-10 19:21:14 INFO [MainThread] brasa.app: Iniciando BrasaHTTP em 0.0.0.0:8080 (workers=32)
+2025-08-10 19:21:14 INFO [MainThread] brasa.app: Servidor iniciado e escutando
+2025-08-10 19:22:28 INFO [MainThread] brasa.app: Encerrando por KeyboardInterrupt
+2025-08-10 19:22:36 INFO [MainThread] brasa.app: Iniciando BrasaHTTP em 0.0.0.0:8080 (workers=32)
+2025-08-10 19:22:36 INFO [MainThread] brasa.app: Servidor iniciado e escutando
+2025-08-10 19:22:49 INFO [MainThread] brasa.app: Encerrando por KeyboardInterrupt
+2025-08-10 19:22:56 INFO [MainThread] brasa.app: Iniciando BrasaHTTP em 0.0.0.0:8081 (workers=32)
+2025-08-10 19:22:56 INFO [MainThread] brasa.app: Servidor iniciado e escutando
+2025-08-10 19:22:59 INFO [MainThread] brasa.app: Encerrando por KeyboardInterrupt
+2025-08-10 19:23:03 INFO [MainThread] brasa.app: Iniciando BrasaHTTP em 0.0.0.0:8080 (workers=32)
+2025-08-10 19:23:03 INFO [MainThread] brasa.app: Servidor iniciado e escutando
+2025-08-10 19:23:07 INFO [MainThread] brasa.app: Encerrando por KeyboardInterrupt
+2025-08-10 19:23:08 INFO [MainThread] brasa.app: Iniciando BrasaHTTP em 0.0.0.0:8080 (workers=32)
+2025-08-10 19:23:08 INFO [MainThread] brasa.app: Servidor iniciado e escutando
+2025-08-10 19:23:28 ERROR [brasa_1] brasa.app: Erro inesperado atendendo 127.0.0.1
+Traceback (most recent call last):
+  File "/home/mateus/Documents/brasa-http/app/server.py", line 170, in serve_connection
+    method, target, version, headers, body = read_request(conn)
+                                             ~~~~~~~~~~~~^^^^^^
+  File "/home/mateus/Documents/brasa-http/app/server.py", line 29, in read_request
+    chunk = conn.recv(BUF_SIZE)
+TimeoutError: timed out
+2025-08-10 19:23:48 INFO [MainThread] brasa.app: Encerrando por KeyboardInterrupt
+2025-08-10 19:26:31 INFO [MainThread] brasa.app: Iniciando BrasaHTTP em 0.0.0.0:8080 (workers=32)
+2025-08-10 19:26:31 INFO [MainThread] brasa.app: Servidor iniciado e escutando
+2025-08-10 19:27:14 INFO [MainThread] brasa.app: Encerrando por KeyboardInterrupt
+2025-08-10 19:36:53 INFO [MainThread] brasa.app: Iniciando BrasaHTTP em 0.0.0.0:8080 (workers=32)
+2025-08-10 19:36:53 INFO [MainThread] brasa.app: Servidor iniciado e escutando
+2025-08-10 19:38:39 INFO [MainThread] brasa.app: Encerrando por KeyboardInterrupt
+2025-08-10 19:38:40 INFO [MainThread] brasa.app: Iniciando BrasaHTTP em 0.0.0.0:8080 (workers=32)
+2025-08-10 19:38:40 INFO [MainThread] brasa.app: Servidor iniciado e escutando
+2025-08-10 19:41:03 INFO [MainThread] brasa.app: Encerrando por KeyboardInterrupt
+2025-08-10 19:49:07 INFO [MainThread] brasa.app: Iniciando BrasaHTTP em https://0.0.0.0:8443 (workers=32)
+2025-08-10 19:49:07 INFO [MainThread] brasa.app: Servidor iniciado e escutando
+2025-08-10 19:49:49 INFO [MainThread] brasa.app: Falha no handshake TLS de 127.0.0.1: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] ssl/tls alert certificate unknown (_ssl.c:1028)
+2025-08-10 19:49:49 INFO [MainThread] brasa.app: Falha no handshake TLS de 127.0.0.1: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] ssl/tls alert certificate unknown (_ssl.c:1028)
+2025-08-10 19:49:53 INFO [MainThread] brasa.app: Falha no handshake TLS de 127.0.0.1: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] ssl/tls alert certificate unknown (_ssl.c:1028)
+2025-08-10 19:49:53 INFO [MainThread] brasa.app: Falha no handshake TLS de 127.0.0.1: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] ssl/tls alert certificate unknown (_ssl.c:1028)
+2025-08-10 19:49:53 INFO [MainThread] brasa.app: Falha no handshake TLS de 127.0.0.1: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] ssl/tls alert certificate unknown (_ssl.c:1028)
+2025-08-10 19:49:53 INFO [MainThread] brasa.app: Falha no handshake TLS de 127.0.0.1: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] ssl/tls alert certificate unknown (_ssl.c:1028)
+2025-08-10 19:50:01 INFO [MainThread] brasa.app: Falha no handshake TLS de 127.0.0.1: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] ssl/tls alert certificate unknown (_ssl.c:1028)
+2025-08-10 19:50:01 INFO [MainThread] brasa.app: Falha no handshake TLS de 127.0.0.1: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] ssl/tls alert certificate unknown (_ssl.c:1028)
+2025-08-10 19:50:05 INFO [MainThread] brasa.app: Falha no handshake TLS de 127.0.0.1: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] ssl/tls alert certificate unknown (_ssl.c:1028)
+2025-08-10 19:50:05 INFO [MainThread] brasa.app: Falha no handshake TLS de 127.0.0.1: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] ssl/tls alert certificate unknown (_ssl.c:1028)
+2025-08-10 19:50:05 INFO [MainThread] brasa.app: Falha no handshake TLS de 127.0.0.1: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] ssl/tls alert certificate unknown (_ssl.c:1028)
+2025-08-10 19:50:05 INFO [MainThread] brasa.app: Falha no handshake TLS de 127.0.0.1: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] ssl/tls alert certificate unknown (_ssl.c:1028)
+2025-08-10 19:50:16 INFO [MainThread] brasa.app: Encerrando por KeyboardInterrupt
+2025-08-10 20:00:21 INFO [MainThread] brasa.app: Iniciando BrasaHTTP em https://0.0.0.0:8443 (workers=32)
+2025-08-10 20:00:21 INFO [MainThread] brasa.app: Servidor iniciado e escutando
+2025-08-10 20:00:59 INFO [MainThread] brasa.app: Falha no handshake TLS de 127.0.0.1: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] ssl/tls alert certificate unknown (_ssl.c:1028)
+2025-08-10 20:00:59 INFO [MainThread] brasa.app: Falha no handshake TLS de 127.0.0.1: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] ssl/tls alert certificate unknown (_ssl.c:1028)
+2025-08-10 20:00:59 INFO [MainThread] brasa.app: Falha no handshake TLS de 127.0.0.1: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] ssl/tls alert certificate unknown (_ssl.c:1028)
+2025-08-10 20:01:00 INFO [MainThread] brasa.app: Falha no handshake TLS de 127.0.0.1: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] ssl/tls alert certificate unknown (_ssl.c:1028)
+2025-08-10 20:02:32 INFO [MainThread] brasa.app: Encerrando por KeyboardInterrupt
+2025-08-10 20:11:12 INFO [MainThread] brasa.app: Iniciando BrasaHTTP em https://0.0.0.0:8443 (workers=32)
+2025-08-10 20:11:12 INFO [MainThread] brasa.app: Servidor iniciado e escutando
+2025-08-10 20:45:04 INFO [MainThread] brasa.app: Encerrando por KeyboardInterrupt
+2025-08-10 20:45:20 INFO [MainThread] brasa.app: Iniciando BrasaHTTP em http://0.0.0.0:8080 (workers=32)
+2025-08-10 20:45:20 INFO [MainThread] brasa.app: Servidor iniciado e escutando
+2025-08-10 21:10:59 INFO [MainThread] brasa.app: Encerrando por KeyboardInterrupt
+2025-08-10 21:11:00 INFO [MainThread] brasa.app: Iniciando BrasaHTTP em http://0.0.0.0:8080 (workers=32)
+2025-08-10 21:11:00 INFO [MainThread] brasa.app: Servidor iniciado e escutando
+2025-08-10 21:15:20 INFO [MainThread] brasa.app: Encerrando por KeyboardInterrupt
+2025-08-10 21:15:29 INFO [MainThread] brasa.app: Iniciando BrasaHTTP em http://0.0.0.0:8080 (workers=32)
+2025-08-10 21:15:29 INFO [MainThread] brasa.app: Servidor iniciado e escutando
+2025-08-12 09:18:23 INFO [MainThread] brasa.app: Encerrando por KeyboardInterrupt

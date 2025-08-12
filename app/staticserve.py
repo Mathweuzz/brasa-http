@@ -6,6 +6,7 @@ from app.responses import build_response
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from app.router import Request
+import gzip
 
 # Raiz dos estáticos: app/static
 STATIC_ROOT = Path(__file__).resolve().parent / "static"
@@ -47,6 +48,7 @@ def serve_static(req: 'Request') -> bytes:
     Atende URLs /static/... com GET e HEAD.
     Segurança: path traversal bloqueado. Sem listagem de diretório.
     Cache simples: Last-Modified / If-Modified-Since.
+    Suporta gzip quando o cliente envia Accept-Encoding: gzip.
     """
     if req.method not in ("GET", "HEAD"):
         return build_response(405, b"<h1>405 Method Not Allowed</h1>", {"Allow": "GET, HEAD"})
@@ -71,9 +73,8 @@ def serve_static(req: 'Request') -> bytes:
     if ims:
         try:
             ims_dt = parsedate_to_datetime(ims)
-            # Comparação em segundos inteiros é suficiente
             if int(st.st_mtime) <= int(ims_dt.timestamp()):
-                # 304 sem corpo; Content-Length 0 é ok
+                # 304 sem corpo
                 return build_response(
                     304,
                     b"",
@@ -81,28 +82,72 @@ def serve_static(req: 'Request') -> bytes:
                         "Last-Modified": last_mod,
                         "Cache-Control": "public, max-age=3600",
                         "X-Content-Type-Options": "nosniff",
+                        "Vary": "Accept-Encoding",
                     },
                 )
         except Exception:
             # header malformado -> ignora e envia normalmente
             pass
 
-    # HEAD: só cabeçalhos, mas Content-Length do arquivo real
+    # Negociação de gzip
+    ae = (req.headers.get("accept-encoding") or "").lower()
+    can_gzip = "gzip" in ae
+    compressible = ctype.startswith("text/") or ctype in {
+        "application/javascript",
+        "application/json",
+        "application/xml",
+        "image/svg+xml",
+    }
+
     if req.method == "HEAD":
+        if can_gzip and compressible:
+            # precisamos do tamanho comprimido, então comprimimos mas não enviamos corpo
+            src = target.read_bytes()
+            gz = gzip.compress(src, mtime=0)
+            return build_response(
+                200,
+                b"",
+                extra_headers={
+                    "Content-Length": str(len(gz)),
+                    "Last-Modified": last_mod,
+                    "Cache-Control": "public, max-age=3600",
+                    "X-Content-Type-Options": "nosniff",
+                    "Content-Encoding": "gzip",
+                    "Vary": "Accept-Encoding",
+                },
+                content_type=ctype,
+            )
+        else:
+            return build_response(
+                200,
+                b"",
+                extra_headers={
+                    "Content-Length": str(size),
+                    "Last-Modified": last_mod,
+                    "Cache-Control": "public, max-age=3600",
+                    "X-Content-Type-Options": "nosniff",
+                },
+                content_type=ctype,
+            )
+
+    # GET
+    data = target.read_bytes()
+    if can_gzip and compressible:
+        gz = gzip.compress(data, mtime=0)
         return build_response(
             200,
-            b"",  # sem corpo
+            gz,
             extra_headers={
-                "Content-Length": str(size),           # substitui o 0 padrão
                 "Last-Modified": last_mod,
                 "Cache-Control": "public, max-age=3600",
                 "X-Content-Type-Options": "nosniff",
+                "Content-Encoding": "gzip",
+                "Vary": "Accept-Encoding",
             },
             content_type=ctype,
         )
 
-    # GET: envia o arquivo
-    data = target.read_bytes()
+    # GET sem gzip
     return build_response(
         200,
         data,

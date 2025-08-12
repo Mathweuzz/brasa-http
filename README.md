@@ -1,4 +1,4 @@
-# BrasaHTTP 🔥
+# BrasaHTTP
 
 Servidor web **minimalista**, feito do zero, só com a **biblioteca padrão** do Python.
 
@@ -10,9 +10,9 @@ Servidor web **minimalista**, feito do zero, só com a **biblioteca padrão** do
 ## Estrutura (inicial)brasa-http/
 ├─ app/
 │ ├─ init.py
-│ ├─ server.py # (nasce no Passo 2)
-│ ├─ router.py # (Passo 3)
-│ ├─ responses.py # (Passo 3/4/5)
+│ ├─ server.py 
+│ ├─ router.py 
+│ ├─ responses.py
 │ ├─ templates/
 │ └─ static/
 ├─ config/
